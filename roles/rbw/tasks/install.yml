@@ -1,0 +1,87 @@
+---
+
+- name: create install directory
+  ansible.builtin.file:
+    path: "{{ rbw_install_path }}"
+    state: directory
+    mode: 0755
+
+- name: detect extracted binary file for rbw on '{{ rbw_delegate_to }}'
+  become: false
+  delegate_to: "{{ rbw_delegate_to }}"
+  run_once: "{{ 'false' if rbw_direct_download else 'true' }}"
+  ansible.builtin.stat:
+    path: "{{ rbw_local_tmp_directory }}/{{ rbw_release.binary }}"
+  register: stat_file_binary
+
+- name: fail when extracted binary are missing
+  ansible.builtin.fail:
+    msg: "missing extracted binary on ansible controller"
+  when:
+    - not running_in_check_mode
+    - not stat_file_binary.stat.exists
+
+- name: detect installed rbw binary
+  ansible.builtin.stat:
+    path: "{{ rbw_install_path }}/{{ rbw_release.binary }}"
+  register: stat_rbw_binary
+
+- name: detect activated rbw binary
+  ansible.builtin.stat:
+    path: /usr/bin/{{ rbw_release.binary }}
+  register: stat_rbw_activated
+
+- name: install and activate rbw
+  when:
+    - not running_in_check_mode
+    - stat_file_binary.stat.exists
+    - (stat_rbw_binary.stat is defined and not stat_rbw_binary.stat.exists | default('false')) or
+      not stat_rbw_activated.stat | bodsch.core.linked_version(rbw_install_path, rbw_version)
+  block:
+    - name: propagate files
+      block:
+        - name: propagate rbw binary
+          ansible.builtin.copy:
+            src: "{{ rbw_local_tmp_directory }}/{{ item }}"
+            dest: "{{ rbw_install_path }}/{{ item }}"
+            mode: 0755
+            remote_src: "{{ 'true' if rbw_direct_download else 'false' }}"
+          loop:
+            - rbw
+            - rbw-agent
+
+        - name: make files executable
+          ansible.builtin.file:
+            path: "{{ rbw_install_path }}/{{ rbw_release.binary }}"
+            mode: 0755
+
+        - name: create link to binary
+          ansible.builtin.file:
+            src: "{{ rbw_install_path }}/{{ item }}"
+            dest: /usr/bin/{{ item }}
+            state: link
+            force: true
+            follow: false
+          loop:
+            - rbw
+            - rbw-agent
+
+      rescue:
+        - name: delete install directory
+          ansible.builtin.file:
+            path: "{{ rbw_install_path }}"
+            state: absent
+
+        - name: exit with fail
+          ansible.builtin.fail:
+            msg: A serious error occurred during the installation of the binary.
+
+- name: create custom fact file
+  when:
+    - not running_in_check_mode
+  bodsch.core.facts:
+    name: rbw
+    facts:
+      version: "{{ rbw_version }}"
+
+...

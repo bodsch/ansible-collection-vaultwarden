@@ -1,0 +1,135 @@
+---
+
+- name: get latest release
+  delegate_to: localhost
+  become: false
+  run_once: true
+  when:
+    - rbw_version == "latest"
+  block:
+    - name: get latest release
+      delegate_to: localhost
+      become: false
+      run_once: true
+      bodsch.scm.github_latest:
+        project: doy
+        repository: rbw
+        user: "{{ lookup('env', 'GH_USER') | default(omit) }}"
+        password: "{{ lookup('env', 'GH_TOKEN') | default(omit) }}"
+      register: _latest_release
+
+    - name: re-define rbw_version
+      ansible.builtin.set_fact:
+        rbw_version: "{{ _latest_release.latest_release }}"
+
+- name: define download information
+  ansible.builtin.set_fact:
+    rbw_release: "{{ rbw_defaults_release | combine(rbw_release, recursive=True) }}"
+
+- name: define delegate instance for download handling
+  ansible.builtin.set_fact:
+    rbw_delegate_to: "{{ ansible_host }}"
+    rbw_local_tmp_directory: "{{
+        lookup('env', 'CUSTOM_LOCAL_TMP_DIRECTORY') |
+        default('/var/cache/ansible/rbw', true) }}/{{ rbw_version }}"
+  when:
+    - rbw_direct_download
+
+- name: create download directory
+  become: false
+  delegate_to: "{{ rbw_delegate_to }}"
+  run_once: "{{ 'false' if rbw_direct_download else 'true' }}"
+  ansible.builtin.file:
+    path: "{{ rbw_local_tmp_directory }}"
+    state: directory
+    mode: "0750"
+  check_mode: false
+
+- name: detect the downloaded rbw archive
+  become: false
+  delegate_to: "{{ rbw_delegate_to }}"
+  run_once: "{{ 'false' if rbw_direct_download else 'true' }}"
+  ansible.builtin.stat:
+    path: "{{ rbw_local_tmp_directory }}/{{ rbw_release.file }}"
+  register: stat_rbw_archive
+
+- name: download
+  when:
+    - stat_rbw_archive.stat is defined
+    - not stat_rbw_archive.stat.exists | default('false')
+    - not running_in_check_mode
+  block:
+    # - name: checksum
+    #   become: false
+    #   delegate_to: localhost
+    #   run_once: true
+    #   block:
+    #     - name: get checksum list
+    #       bodsch.scm.github_checksum:
+    #         project: doy
+    #         repository: rbw
+    #         checksum_file: sha256sums.txt
+    #         user: "{{ lookup('env', 'GH_USER') | default(omit) }}"
+    #         password: "{{ lookup('env', 'GH_TOKEN') | default(omit) }}"
+    #         architecture: "{{ ansible_architecture }}"
+    #         system: "{{ ansible_facts.system }}"
+    #         version: "v{{ rbw_version }}"
+    #       register: _latest_checksum
+    #
+    #     - name: define checksum for {{ system_architecture }} architecture
+    #       ansible.builtin.set_fact:
+    #         __rbw_checksum: "sha256:{{ _latest_checksum.checksum }}"
+    #       when:
+    #         - _latest_checksum.rc == 0
+    #         - _latest_checksum.checksum is defined
+    #         - _latest_checksum.checksum | string | length > 0
+
+    - name: download rbw binary archive
+      become: false
+      delegate_to: "{{ rbw_delegate_to }}"
+      run_once: "{{ 'false' if rbw_direct_download else 'true' }}"
+      ansible.builtin.get_url:
+        url: "{{ rbw_release.download_url }}/download/{{ rbw_version }}/{{ rbw_release.file }}"
+        dest: "{{ rbw_local_tmp_directory }}/{{ rbw_release.file }}"
+        # checksum: "{{ __rbw_checksum | default(omit) }}"
+        mode: 0640
+      register: _download_archive
+      until: _download_archive is succeeded
+      retries: 5
+      delay: 2
+
+  rescue:
+    - name: delete download directory
+      become: false
+      delegate_to: "{{ rbw_delegate_to }}"
+      run_once: "{{ 'false' if rbw_direct_download else 'true' }}"
+      ansible.builtin.file:
+        path: "{{ rbw_local_tmp_directory }}"
+        state: absent
+
+    - name: exit with fail
+      ansible.builtin.fail:
+        msg: A serious error occurred when downloading the archive.
+
+- name: detect extracted binary
+  become: false
+  delegate_to: "{{ rbw_delegate_to }}"
+  run_once: "{{ 'false' if rbw_direct_download else 'true' }}"
+  ansible.builtin.stat:
+    path: "{{ rbw_local_tmp_directory }}/{{ rbw_release.binary }}"
+  register: stat_rbw_binary
+
+- name: extract rbw archive
+  become: false
+  delegate_to: "{{ rbw_delegate_to }}"
+  run_once: "{{ 'false' if rbw_direct_download else 'true' }}"
+  ansible.builtin.unarchive:
+    src: "{{ rbw_local_tmp_directory }}/{{ rbw_release.file }}"
+    dest: "{{ rbw_local_tmp_directory }}/"
+    copy: false
+  when:
+    - not running_in_check_mode
+    - stat_rbw_binary.stat is defined
+    - not stat_rbw_binary.stat.exists | default('false')
+
+...

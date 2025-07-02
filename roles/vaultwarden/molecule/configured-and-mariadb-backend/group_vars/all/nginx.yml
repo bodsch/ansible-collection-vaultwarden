@@ -1,0 +1,37 @@
+---
+
+nginx_logformat:
+  json_combined:
+    format: |
+      '{'
+        '"time_local": "$time_local",'
+        '"remote_addr": "$remote_addr",'
+        '"remote_user": "$remote_user",'
+        '"request": "$request",'
+        '"status": "$status",'
+        '"body_bytes_sent": "$body_bytes_sent",'
+        '"request_time": "$request_time",'
+        '"http_referrer": "$http_referer",'
+        '"http_user_agent": "$http_user_agent"'
+      '}';
+    # escape: json
+
+nginx_http:
+
+  includes:
+    - includes.d/useragent.rules
+    - includes.d/proxy_cache.rules
+    - sites-enabled/*.conf
+
+  client:                                                 #
+    max_body_size: "128M"
+
+  maps:
+    - name: http_upgrade
+      description: connection_upgrade
+      variable: connection_upgrade
+      mapping:
+        - source: "''"
+          result: "''"
+        - source: default
+          result: upgrade

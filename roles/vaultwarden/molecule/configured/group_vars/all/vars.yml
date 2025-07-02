@@ -1,0 +1,34 @@
+---
+
+vaultwarden_webvault:
+  version: latest
+
+vaultwarden_config:
+  #directories:
+  #  data: /var/lib/vaultwarden
+  templates:
+    reload_enabled: true
+  web_vault:
+    enabled: true
+  database: {}
+  websocket: {}
+  push: {}
+  job: {}
+  global:
+    domain: "https://vault.molecule.lan"
+  logging:
+    extended_logging: true
+    log_timestamp_format: "%Y-%m-%d %H:%M:%S.%3f"
+    use_syslog: false
+    log_file: /var/log/vaultwarden/vaultwarden.log
+    log_level: debug
+  smtp:
+    host: "127.0.0.1"
+    from: "vault@domain.tld"
+    from_name: "Vaultwarden"
+    timeout: 25
+  rocket:
+    address: 127.0.0.1
+    port: 8000
+
+...

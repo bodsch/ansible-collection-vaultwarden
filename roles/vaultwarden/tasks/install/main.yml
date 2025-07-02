@@ -1,0 +1,103 @@
+---
+
+- name: detect installed vaultwarden
+  block:
+    - name: detect if vaultwarden exists
+      ansible.builtin.stat:
+        path: /usr/bin/vaultwarden
+      register: vaultwarden_binary_file
+
+    - name: define vaultwarden_installed
+      ansible.builtin.set_fact:
+        vaultwarden_installed: "{{ vaultwarden_binary_file.stat.exists }}"
+
+- name: merge vaultwarden configuration between defaults and custom
+  ansible.builtin.set_fact:
+    vaultwarden_config: "{{ vaultwarden_defaults_config | combine(vaultwarden_config, recursive=True) }}"
+
+# debian based
+#
+- name: debian based
+  when:
+    - ansible_os_family | lower == 'debian'
+  block:
+    - name: download vaultwarden GPG
+      become: true
+      ansible.builtin.get_url:
+        url: https://bitwarden-deb.tech-network.de/bananian-keyring.gpg
+        dest: /etc/apt/trusted.gpg.d/bananian-keyring.gpg
+        mode: 0644
+      register: _download_gpg
+      until: _download_gpg is succeeded
+      retries: 5
+      delay: 2
+      check_mode: false
+
+    - name: add vaultwarden repo source
+      ansible.builtin.template:
+        src: etc/apt/vaultwarden.list.j2
+        dest: /etc/apt/sources.list.d/vaultwarden.list
+        mode: 0644
+      register: vaultwarden_repo_source
+
+    - name: update package cache  # noqa no-handler
+      become: true
+      ansible.builtin.package:
+        update_cache: true
+      when:
+        - vaultwarden_repo_source.changed
+
+- name: create policy-rc.d
+  when:
+    - not vaultwarden_installed
+    - ansible_os_family | lower == 'debian'
+  ansible.builtin.copy:
+    dest: /usr/sbin/policy-rc.d
+    content: |
+      #!/bin/sh
+      exit 101
+    mode: 0755
+  tags:
+    - vaultwarden
+    - vaultwarden_install
+
+- name: install package
+  when:
+    - not vaultwarden_installed
+  ansible.builtin.package:
+    name: "{{ vaultwarden_packages }}"
+    state: present
+  tags:
+    - vaultwarden
+    - vaultwarden_install
+
+- name: create the systemd service file
+  when:
+    - ansible_service_mgr | lower == "systemd"
+  ansible.builtin.template:
+    src: init/systemd/vaultwarden.service.j2
+    dest: "{{ systemd_lib_directory }}/vaultwarden.service"
+    owner: root
+    group: root
+    mode: 0644
+  notify:
+    - daemon-reload
+    - restart service
+
+- name: remove policy-rc.d
+  when:
+    - not vaultwarden_installed
+    - ansible_os_family | lower == 'debian'
+  ansible.builtin.file:
+    path: /usr/sbin/policy-rc.d
+    state: absent
+  tags:
+    - vaultwarden
+    - vaultwarden_install
+
+- name: install vaultwarden web
+  ansible.builtin.include_tasks: install/vaultwarden_web.yml
+  when:
+    - vaultwarden_config.web_vault.enabled | default('false') | bool
+
+...

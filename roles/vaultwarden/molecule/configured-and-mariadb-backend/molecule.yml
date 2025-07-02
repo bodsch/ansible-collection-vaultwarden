@@ -1,0 +1,84 @@
+---
+
+role_name_check: 1
+
+dependency:
+  name: galaxy
+
+driver:
+  name: docker
+
+platforms:
+  - name: database
+    image: "ghcr.io/bodsch/docker-ansible/ansible-debian:12"
+    command: ${MOLECULE_DOCKER_COMMAND:-""}
+    docker_host: "${DOCKER_HOST:-unix://run/docker.sock}"
+    privileged: true
+    pre_build_image: true
+    cgroupns_mode: host
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      - /var/lib/containerd
+    capabilities:
+      - SYS_ADMIN
+    tmpfs:
+      - /run
+      - /tmp
+    groups:
+      - database
+    docker_networks:
+      - name: vaultwarden
+        ipam_config:
+          - subnet: "10.12.0.0/24"
+            gateway: "10.12.0.1"
+    networks:
+      - name: vaultwarden
+        ipv4_address: "10.12.0.10"
+
+  - name: instance
+    image: "ghcr.io/bodsch/docker-ansible/ansible-${DISTRIBUTION:-debian:12}"
+    command: ${MOLECULE_DOCKER_COMMAND:-""}
+    docker_host: "${DOCKER_HOST:-unix://run/docker.sock}"
+    privileged: true
+    pre_build_image: true
+    cgroupns_mode: host
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      - /var/lib/containerd
+    tmpfs:
+      - /run
+      - /tmp
+    published_ports:
+      - 80:80
+      - 443:443
+      - 8000:8000
+    networks:
+      - name: vaultwarden
+        ipv4_address: "10.12.0.20"
+
+provisioner:
+  name: ansible
+  ansible_args:
+    - --diff
+    - -v
+  config_options:
+    defaults:
+      deprecation_warnings: true
+      callback_result_format: yaml
+      gathering: smart
+      fact_caching: jsonfile
+      fact_caching_timeout: 8640
+      fact_caching_connection: ansible_facts
+
+scenario:
+  test_sequence:
+    - destroy
+    - dependency
+    - create
+    - prepare
+    - converge
+    - verify
+    - destroy
+
+verifier:
+  name: testinfra

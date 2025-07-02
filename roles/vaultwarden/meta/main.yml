@@ -1,0 +1,36 @@
+---
+
+galaxy_info:
+  role_name: vaultwarden
+  namespace: bodsch
+
+  author: Bodo Schulz
+  description: ansible role to install and configure vaultwarden
+
+  license: Apache
+  min_ansible_version: "8.5"
+
+  platforms:
+    - name: ArchLinux
+    - name: Debian
+      versions:
+        # 12
+        - bookworm
+    # - name: Ubuntu
+    #   versions:
+    #     # 20.04 LTS (Focal Fossa)
+    #     - focal
+    #     # 22.04 LTS (Jammy Jellyfish)
+    #     - jammy
+    #     # 23.04 (Lunar Lobster)
+    #     - lunar
+
+  galaxy_tags:
+    - security
+    - password
+    - vault
+    - vaultwarden
+
+dependencies: []
+
+...

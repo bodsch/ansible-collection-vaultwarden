@@ -1,0 +1,29 @@
+---
+
+galaxy_info:
+  role_name: rbw
+  namespace: bodsch
+
+  author: Bodo Schulz
+  description: ansible role to install and configure vaultwarden cli
+
+  license: Apache
+  min_ansible_version: "9.5"
+
+  platforms:
+    - name: ArchLinux
+    - name: Debian
+      versions:
+        # 12
+        - bookworm
+
+  galaxy_tags:
+    - security
+    - password
+    - vault
+    - vaultwarden
+    - cli
+
+dependencies: []
+
+...

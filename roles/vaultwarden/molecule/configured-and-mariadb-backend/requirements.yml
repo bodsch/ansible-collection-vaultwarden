@@ -1,0 +1,13 @@
+---
+
+- name: nginx
+  src: https://github.com/bodsch/ansible-nginx
+  scm: git
+  version: 0.27.2
+
+- name: mariadb
+  src: https://github.com/bodsch/ansible-mariadb.git
+  scm: git
+  version: 2.6.0
+
+...

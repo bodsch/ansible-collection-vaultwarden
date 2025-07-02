@@ -1,0 +1,14 @@
+---
+
+rbw_version: 1.10.1
+
+rbw_state: present
+
+rbw_direct_download: false
+
+rbw_release: {}
+
+rbw_config: {}
+#  email: admin@vaultwarden.internal
+#  vaultwarden_url: "http://127.0.0.1"
+...

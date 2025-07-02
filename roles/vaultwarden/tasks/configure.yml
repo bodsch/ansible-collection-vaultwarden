@@ -1,0 +1,78 @@
+---
+
+# - name: user and group handling
+#   when:
+#     - vaultwarden_virtual_user.name != "root"
+#   block:
+#     - name: create vaultwarden virtual user group
+#       ansible.builtin.group:
+#         name: "{{ vaultwarden_virtual_user.name }}"
+#         state: present
+#         system: false
+#         gid: "{{ vaultwarden_virtual_user.gid }}"
+#
+#     - name: create vaultwarden virtual user
+#       ansible.builtin.user:
+#         name: "{{ vaultwarden_virtual_user.name }}"
+#         groups: "{{ vaultwarden_virtual_user.name }}"
+#         append: true
+#         shell: /usr/sbin/nologin
+#         system: false
+#         uid: "{{ vaultwarden_virtual_user.uid }}"
+#         createhome: true
+#         home: "{{ vaultwarden_virtual_user.home }}"
+
+- name: gathering facts now
+  ansible.builtin.setup:
+
+- name: merge vaultwarden configuration between defaults and custom
+  ansible.builtin.set_fact:
+    vaultwarden_config: "{{ vaultwarden_defaults_config | combine(vaultwarden_config, recursive=True) }}"
+
+- name: assert broken database configuration
+  ansible.builtin.assert:
+    that:
+      - vaultwarden_config.database.url | bodsch.vaultwarden.supported_databases(ansible_distribution, ansible_os_family)
+    msg: "This version of vaultwarden currently only supports one sqlite database!\nPlease change your configuration."
+    quiet: true
+
+- name: create logging directory
+  ansible.builtin.file:
+    state: directory
+    path: "{{ vaultwarden_config.logging.log_file | dirname }}"
+    owner: vaultwarden
+    group: vaultwarden
+    mode: 0775
+
+- name: create configuration directory
+  ansible.builtin.file:
+    state: directory
+    path: "{{ item }}"
+    mode: 0755
+  loop:
+    - /etc/vaultwarden
+
+- name: validate smtp settings
+  ansible.builtin.set_fact:
+    vaultwarden_smtp_settings: "{{ vaultwarden_config.smtp | bodsch.vaultwarden.validate_smtp_settings() }}"
+
+- name: fail at wrong smtp settings
+  ansible.builtin.assert:
+    that:
+      - vaultwarden_smtp_settings.valid
+    msg: "Wrong SMTP Settings. {{ vaultwarden_smtp_settings.msg }}"
+    quiet: true
+
+- name: create vaultwarden config
+  ansible.builtin.template:
+    src: etc/vaultwarden/config.env.j2
+    dest: /etc/vaultwarden/config.env
+    backup: true
+    mode: 0644
+  notify:
+    - restart service
+
+- name: flush handlers
+  ansible.builtin.meta: flush_handlers
+
+...

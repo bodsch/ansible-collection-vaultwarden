@@ -1,0 +1,45 @@
+---
+
+namespace: bodsch
+name: vaultwarden
+
+version: 0.1.0
+
+readme: README.md
+
+authors:
+  - Bodo Schulz <bodo@boone-schulz.de>
+
+description: A collection of Ansible roles for Vaultwarden.
+
+license:
+  - Apache-2.0
+
+license_file: ''
+
+tags:
+  - system
+  - vaultwarden
+
+dependencies:
+  community.general: ">=10.3.0"
+  ansible.utils: "*"
+  bodsch.certs: ">=0.9.0"
+  bodsch.core: ">=2.6.3"
+  bodsch.systemd: ">=1.2.1"
+
+repository: https://github.com/bodsch/ansible-collection-vaultwarden
+documentation: https://github.com/bodsch/ansible-collection-vaultwarden/README.md
+homepage: https://github.com/bodsch/ansible-collection-vaultwarden
+issues: https://github.com/bodsch/ansible-collection-vaultwarden/issues
+
+build_ignore:
+  - "galaxy.yml"
+  - "*.pyc"
+  - "*.retry"
+  - ".ansible-lint"
+  - ".editorconfig"
+  - ".flake8"
+  - ".gitignore"
+  - ".yamllint"
+  - ".github"

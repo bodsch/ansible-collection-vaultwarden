@@ -1,0 +1,9 @@
+---
+
+rbw_version: latest
+
+rbw_config:
+  email: admin@vaultwarden.molecule
+  vaultwarden_url: "https://127.0.1.1"
+
+...

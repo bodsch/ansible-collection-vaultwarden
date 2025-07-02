@@ -1,0 +1,35 @@
+---
+
+vaultwarden_config:
+  templates:
+    reload_enabled: true
+  web_vault:
+    enabled: true
+  database:
+    url: "mysql://{{ database_user }}:{{ vault__database_password }}@{{ database_hostname }}:{{ database_port }}/{{ database_schema }}"
+    enable_db_wal: true
+    connection_retries: 15
+    timeout: 30
+    max_connections: 10
+    connection_init: ""
+  websocket: {}
+  push: {}
+  job: {}
+  global:
+    domain: "https://vault.molecule.lan"
+  logging:
+    extended_logging: false
+    log_timestamp_format: "%Y-%m-%d %H:%M:%S.%3f"
+    use_syslog: false
+    log_file: /var/log/vaultwarden/vaultwarden.log
+    log_level: info
+  smtp:
+    host: "127.0.0.1"
+    from: "vault@domain.tld"
+    from_name: "Vaultwarden"
+    timeout: 25
+  rocket:
+    address: 127.0.0.1
+    port: 8000
+
+...

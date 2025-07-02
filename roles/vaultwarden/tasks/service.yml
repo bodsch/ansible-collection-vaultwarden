@@ -1,0 +1,12 @@
+---
+
+- name: start and enable service
+  ansible.builtin.service:
+    name: vaultwarden
+    state: "{{ vaultwarden_service.state | default('started') }}"
+    enabled: "{{ vaultwarden_service.enabled | default(true) | bool }}"
+  tags:
+    - vaultwarden
+    - vaultwarden-start-enable-service
+
+...

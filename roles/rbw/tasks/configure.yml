@@ -1,0 +1,20 @@
+---
+
+- name: merge rbw configuration between defaults and custom
+  ansible.builtin.set_fact:
+    rbw_config: "{{ rbw_defaults_config | combine(rbw_config, recursive=True) }}"
+
+- name: create cli configuration directory
+  ansible.builtin.file:
+    state: directory
+    path: "${HOME}/.config/rbw"
+    mode: 0750
+
+- name: create cli configuration
+  ansible.builtin.template:
+    src: etc/rbw/config.json.j2
+    dest: "${HOME}/.config/rbw/config.json"
+    backup: true
+    mode: 0644
+
+...

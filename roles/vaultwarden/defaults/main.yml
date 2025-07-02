@@ -1,0 +1,39 @@
+---
+
+vaultwarden_webvault:
+  version: 2025.6.0
+
+vaultwarden_release: {}
+#   web:
+#     download_url: https://github.com/dani-garcia/bw_web_builds/releases
+#     file: "bw_web_v{{ vaultwarden_webvault.version }}.tar.gz"
+#     binary: web-vault
+#   cli:
+#     download_url: https://github.com/doy/rbw/releases
+#     file: "rbw_{{ vaultwarden_cli.version }}_linux_amd64.tar.gz"
+#     binary: rbw
+
+vaultwarden_service:
+  state: started
+  enabled: true
+
+vaultwarden_config:
+  directories:
+    data: /var/lib/vaultwarden
+  templates: {}
+  web_vault: {}
+  database: {}
+  websocket: {}
+  push: {}
+  job: {}
+  global: {}
+  logging:
+    extended_logging: true
+    log_timestamp_format: "%Y-%m-%d %H:%M:%S.%3f"
+    use_syslog: false
+    log_file: /var/log/vaultwarden/vaultwarden.log
+    log_level: info
+  smtp: {}
+  rocket: {}
+
+...

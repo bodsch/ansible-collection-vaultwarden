@@ -1,0 +1,114 @@
+---
+
+- name: get latest release
+  delegate_to: localhost
+  become: false
+  run_once: true
+  when:
+    - vaultwarden_webvault.version == "latest"
+  block:
+    - name: get latest release
+      delegate_to: localhost
+      become: false
+      run_once: true
+      bodsch.scm.github_latest:
+        project: dani-garcia
+        repository: bw_web_builds
+        user: "{{ lookup('env', 'GH_USER') | default(omit) }}"
+        password: "{{ lookup('env', 'GH_TOKEN') | default(omit) }}"
+      register: _latest_release
+
+    - name: re-define vaultwarden_webvault.version
+      ansible.builtin.set_fact:
+        vaultwarden_webvault:
+          version: "{{ _latest_release.latest_release }}"
+
+- name: define download information
+  ansible.builtin.set_fact:
+    vaultwarden_release: "{{ vaultwarden_defaults_release | combine(vaultwarden_release, recursive=True) }}"
+
+# ----------------------------------------------------------------------------------------
+
+- name: detect installed vaultwarden web
+  block:
+    - name: detect if vaultwarden web exists
+      ansible.builtin.stat:
+        path: "{{ vaultwarden_config.directories.web_vault }}/web-vault"
+      register: vaultwarden_web_version_directory
+
+    - name: detect if vaultwarden web exists - {{ vaultwarden_config.directories.web_vault }}/{{ vaultwarden_webvault.version }}/web-vault/version.json
+      ansible.builtin.stat:
+        path: "{{ vaultwarden_config.directories.web_vault }}/{{ vaultwarden_webvault.version }}/web-vault/version.json"
+      register: vaultwarden_web_version_file
+
+    - name: read the installed vaultwarden web version
+      ansible.builtin.slurp:
+        src: "{{ vaultwarden_config.directories.web_vault }}/{{ vaultwarden_webvault.version }}/web-vault/version.json"
+      register: _vaultwarden_web_version
+      when:
+        - vaultwarden_web_version_file.stat.exists
+
+    - name: define vaultwarden_web_installed
+      ansible.builtin.set_fact:
+        vaultwarden_web_installed: "{{ vaultwarden_web_version_file.stat.exists }}"
+        vaultwarden_web_version: "{{ _vaultwarden_web_version.get('content', '') | b64decode }}"
+
+- name: remove older web-vault directory
+  ansible.builtin.file:
+    path: "{{ vaultwarden_config.directories.web_vault }}/web-vault"
+    state: absent
+  when:
+    - not vaultwarden_web_version_directory.stat.islnk | default('false')
+
+- name: vaultwarden web
+  when:
+    - vaultwarden_config.web_vault.enabled | default('false') | bool
+    - vaultwarden_config.directories.web_vault is defined
+    - vaultwarden_config.directories.web_vault | string | length > 0
+    - vaultwarden_web_version_directory.stat.isdir | default('false') or
+      not vaultwarden_web_installed
+  block:
+    - name: create vaultwarden web directory
+      ansible.builtin.file:
+        state: directory
+        path: "{{ vaultwarden_config.directories.web_vault }}/{{ vaultwarden_webvault.version }}"
+        owner: vaultwarden
+        group: vaultwarden
+        mode: 0775
+
+    - name: download vaultwarden web
+      become: true
+      ansible.builtin.get_url:
+        url: "{{ vaultwarden_release.web.download_url }}/download/v{{ vaultwarden_webvault.version }}/{{ vaultwarden_release.web.file }}"
+        dest: /tmp/
+        mode: 0644
+        validate_certs: false
+      register: _download
+      until: _download is succeeded
+      retries: 5
+      delay: 2
+      check_mode: false
+
+    - name: install vaultwarden web
+      ansible.builtin.unarchive:
+        src: "/tmp/{{ vaultwarden_release.web.file }}"
+        dest: "{{ vaultwarden_config.directories.web_vault }}/{{ vaultwarden_webvault.version }}/"
+        remote_src: true
+        owner: vaultwarden
+        group: vaultwarden
+
+    - name: create link for web-vault
+      ansible.builtin.file:
+        src: "{{ vaultwarden_config.directories.web_vault }}/{{ vaultwarden_webvault.version }}/web-vault"
+        dest: "{{ vaultwarden_config.directories.web_vault }}/web-vault"
+        state: link
+        force: true
+        follow: false
+
+    - name: create custom fact file
+      bodsch.core.facts:
+        name: vaultwarden_web
+        facts:
+          version: "{{ vaultwarden_webvault.version }}"
+
+...
