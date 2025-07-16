@@ -62,7 +62,8 @@ class FilterModule(object):
                 """
                     validate sender adress
                 """
-                valid_smtp_from = re.match(r"^[A-Za-z0-9\.\+_-]+@[A-Za-z0-9\._-]+\.[a-zA-Z]*$", smtp_from)
+                valid_smtp_from = re.match(
+                    r"^[A-Za-z0-9\.\+_-]+@[A-Za-z0-9\._-]+\.[a-zA-Z]*$", smtp_from)
 
                 if valid_smtp_from:
                     valid = True

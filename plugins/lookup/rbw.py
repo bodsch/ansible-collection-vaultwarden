@@ -9,7 +9,7 @@ import hashlib
 from pathlib import Path
 from ansible.utils.display import Display
 from ansible.plugins.lookup import LookupBase
-from ansible.errors import AnsibleError
+from ansible.errors import AnsibleLookupError
 
 display = Display()
 
@@ -95,10 +95,10 @@ class LookupModule(LookupBase):
             os.makedirs(self.cache_directory, exist_ok=True)
 
     def run(self, terms, variables=None, **kwargs):
-        display.v(f"run(terms={terms}, kwargs={kwargs})")
+        display.vv(f"run(terms={terms}, kwargs={kwargs})")
 
         if not terms or not isinstance(terms, list) or not terms[0]:
-            raise AnsibleError("At least one Vault entry must be specified.")
+            self._fail("At least one vault entry must be specified.")
 
         field = kwargs.get("field", "").strip()
         parse_json = kwargs.get("parse_json", False)
@@ -110,11 +110,13 @@ class LookupModule(LookupBase):
             index_data = self._read_index()
             if index_data is None:
                 index_data = self._fetch_index()
-            display.v(f"Index has {len(index_data['entries'])} entries")
+                display.vv(
+                    f"Index contains {len(index_data['entries'])} entries.")
 
         results = []
 
         for term in terms:
+            name, folder, user = ("", "", "")
             if isinstance(term, dict):
                 name = term.get("name", "").strip()
                 folder = term.get("folder", "").strip()
@@ -122,8 +124,6 @@ class LookupModule(LookupBase):
                 raw_entry = f"{name}|{folder}|{user}"
             else:
                 name = term.strip()
-                folder = ""
-                user = ""
                 raw_entry = name
 
             if not name:
@@ -140,38 +140,47 @@ class LookupModule(LookupBase):
                 ]
 
                 if not matches:
-                    raise AnsibleError(f"No matching entry found in index for: {raw_entry}")
+                    self._fail(
+                        f"No matching entry found in index for: {raw_entry}")
 
                 if len(matches) > 1:
-                    raise AnsibleError(f"Multiple matches found in index for: {raw_entry}")
+                    self._fail(
+                        f"Multiple matches found in index for: {raw_entry}")
 
                 entry_id = matches[0]["id"]
-                display.v(f"Resolved {raw_entry} → id={entry_id}")
+                display.vv(f"Resolved {raw_entry} → id={entry_id}")
 
             cache_key = self._cache_key(entry_id, field)
+            display.vv(f"try to read cache for key {cache_key}")
             cached = self._read_cache(cache_key)
 
             if cached is not None:
                 value = cached
-                display.v(f"Cache HIT for {entry_id}")
+                display.vv(f"Cache HIT for '{entry_id}'")
             else:
+                display.vv(f"Cache MISS for '{entry_id}'")
+
                 value = self._fetch_rbw(entry_id, field)
-                self._write_cache(cache_key, value)
-                display.v(f"Cache MISS for {entry_id} — fetched with rbw")
+                # nur wenn das ergebniss ein String ist, in den cache legen.
+                if isinstance(value, str):
+                    self._write_cache(cache_key, value)
 
             if parse_json:
                 try:
                     results.append(json.loads(value))
                 except json.decoder.JSONDecodeError as e:
                     if strict_json:
-                        raise AnsibleError(
-                            f"JSON parsing failed for entry '{entry_id}': {e}"
+                        self._fail(
+                            f"JSON parsing failed for entry '{entry_id}'",
+                            error=str(e),
                         )
                     else:
-                        display.v(f"Warning: Content of '{entry_id}' is not valid JSON.")
+                        display.vv(
+                            f"Warning: Content of '{entry_id}' is not valid JSON.")
                         results.append({})
+
                 except Exception as e:
-                    raise AnsibleError(f"Unexpected error parsing '{entry_id}': {e}")
+                    self._fail(f"Unexpected error parsing '{entry_id}'", e)
             else:
                 results.append(value)
 
@@ -194,7 +203,12 @@ class LookupModule(LookupBase):
             return result.stdout.strip()
         except subprocess.CalledProcessError as e:
             err_msg = e.stderr.strip() or e.stdout.strip()
-            raise AnsibleError(f"Error retrieving Vault entry '{entry_id}': {err_msg}")
+            self._fail(
+                "Error retrieving vault entry",
+                entry_id=entry_id,
+                cmd=" ".join(cmd),
+                error=err_msg,
+            )
 
     def _fetch_index(self):
         cmd = ["rbw", "list", "--fields", "id,user,name,folder"]
@@ -207,7 +221,8 @@ class LookupModule(LookupBase):
                 stderr=subprocess.PIPE,
                 text=True,
             )
-            lines = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+            lines = [line.strip()
+                     for line in result.stdout.splitlines() if line.strip()]
 
             headers = ["id", "user", "name", "folder"]
 
@@ -229,7 +244,11 @@ class LookupModule(LookupBase):
 
         except subprocess.CalledProcessError as e:
             err_msg = e.stderr.strip() or e.stdout.strip()
-            raise AnsibleError(f"Error retrieving rbw index: {err_msg}")
+            self._fail(
+                "Error retrieving rbw index",
+                cmd="rbw list --fields id,user,name,folder",
+                error=err_msg,
+            )
 
     def _index_path(self):
         return os.path.join(self.cache_directory, "index.json")
@@ -247,10 +266,11 @@ class LookupModule(LookupBase):
                 return payload
             else:
                 os.remove(path)
-                return None
+
         except Exception as e:
-            display.v(f"Index cache read error: {e}")
-            return None
+            display.vv(f"Index cache read error: {e}")
+
+        return None
 
     def _write_index(self, index_payload):
         path = self._index_path()
@@ -258,7 +278,7 @@ class LookupModule(LookupBase):
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(index_payload, f)
         except Exception as e:
-            display.v(f"Index cache write error: {e}")
+            display.vv(f"Index cache write error: {e}")
 
     def _cache_key(self, entry_id, field):
         raw_key = f"{entry_id}|{field}".encode("utf-8")
@@ -280,10 +300,11 @@ class LookupModule(LookupBase):
                 return payload["value"]
             else:
                 os.remove(path)
-                return None
+
         except Exception as e:
-            display.v(f"Cache read error for key {key}: {e}")
-            return None
+            display.vv(f"Cache read error for key {key}: {e}")
+
+        return None
 
     def _write_cache(self, key, value):
         path = self._cache_path(key)
@@ -295,4 +316,22 @@ class LookupModule(LookupBase):
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(payload, f)
         except Exception as e:
-            display.v(f"Cache write error for key {key}: {e}")
+            display.vv(f"Cache write error for key {key}: {e}")
+
+    def _format_error(self, message, **context):
+        """
+            Format into a single-line block for Ansible's [ERROR] prefix
+        """
+        parts = [message]
+        if context:
+            details = "; ".join(f"{k} = {v}" for k, v in context.items())
+            parts.append(f", {details}")
+        return " ".join(parts)
+
+    def _fail(self, message, **context):
+        """
+        """
+        full = self._format_error(message, **context)
+        # display.error(full)
+        # beim Raise nur das Nötigste, damit fatal nur message zeigt
+        raise AnsibleLookupError(full)

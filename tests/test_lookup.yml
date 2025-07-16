@@ -4,36 +4,45 @@
   hosts: localhost
   gather_facts: false
   vars:
-    json_entry: "37588485-5149-42e8-af98-1876f1e472cd"            # Note mit JSON
-    login_entry: "4e1f183d-6983-44d9-ba5c-9c64ecdff482"           # Login mit username/password
-    raw_note: "expressschnitte.org"                                   # Note mit einfachem Text
-    broken_json_entry: ""     # Note mit ungültigem JSON
+    json_entry: "dd8f05d9-a299-4277-b303-f2eb3e145f7e"            # Note mit JSON
+    login_entry: "9df68258-6d51-4b5f-a618-86d8993836a7"           # Login mit username/password
+    raw_note: "e170256d-984e-42a2-98ab-19f11e4e16c7"              # Note mit einfachem Text
+    broken_json_entry: "48a33ff3-d94a-4ebb-ae10-90bd9c3e122b"     # Note mit ungültigem JSON
 
   tasks:
     - name: "Test: String lesen"
       debug:
-        msg: "Raw note: {{ lookup('bodsch.core.rbw', raw_note) }}"
+        msg: "Raw note: {{ lookup('bodsch.vaultwarden.rbw', raw_note) }}"
 
     - name: "Test: Login-Feld (username)"
       debug:
-        msg: "Username: {{ lookup('bodsch.core.rbw', login_entry, field='username') }}"
+        msg: "Username: {{ lookup(
+            'bodsch.vaultwarden.rbw',
+            {
+              'folder': 'general',
+              'name': 'geoip'
+            },
+            field='LicenseKey',
+            use_index=false
+          ) }}"
 
     - name: "Test: Login-Feld (password)"
       debug:
-        msg: "Password: {{ lookup('bodsch.core.rbw', login_entry, field='password') }}"
+        msg: "Password: {{ lookup('bodsch.vaultwarden.rbw', login_entry, field='password') }}"
 
     - name: "Test: JSON parsen"
       set_fact:
-        json_data: "{{ lookup('bodsch.core.rbw', json_entry, parse_json=True) }}"
+        json_data: "{{ lookup('bodsch.vaultwarden.rbw', json_entry, parse_json=True) }}"
 
     - name: "Test: Multi fetch"
       set_fact:
-        multi_data: "{{ lookup('bodsch.core.rbw', raw_note, login_entry) }}"
+        multi_data: "{{ lookup('bodsch.vaultwarden.rbw', raw_note, login_entry) }}"
 
     - name: "Test: Lookup mit Index-Daten (name, folder, user)"
       set_fact:
-        indexed_entry: "{{ lookup('bodsch.core.rbw',
-          {'name': 'expresszuschnitt.de', 'folder': '', 'user': ''},
+        indexed_entry: "{{ lookup(
+            'bodsch.vaultwarden.rbw',
+              {'name': 'ldap', 'folder': '', 'user': ''},
           field='password',
           use_index=True) }}"
 
@@ -54,7 +63,7 @@
 
     - name: "Test: Defektes JSON → Fallback zu leerem Dict"
       set_fact:
-        broken: "{{ lookup('bodsch.core.rbw', broken_json_entry, parse_json=True) }}"
+        broken: "{{ lookup('bodsch.vaultwarden.rbw', broken_json_entry, parse_json=True) }}"
 
     - name: "Ausgabe: Fallback-JSON"
       debug:
@@ -63,7 +72,7 @@
     - name: "Test: Striktes JSON → Fehler"
       block:
         - set_fact:
-            broken_strict: "{{ lookup('bodsch.core.rbw', broken_json_entry, parse_json=True, strict_json=True) }}"
+            broken_strict: "{{ lookup('bodsch.vaultwarden.rbw', broken_json_entry, parse_json=True, strict_json=True) }}"
         - debug:
             var: broken_strict
       rescue:
