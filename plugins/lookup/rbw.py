@@ -107,6 +107,8 @@ class LookupModule(LookupBase):
 
         index_data = None
         if use_index:
+            # first sync rbw
+            self._sync_rbw()
             index_data = self._read_index()
             if index_data is None:
                 index_data = self._fetch_index()
@@ -151,7 +153,7 @@ class LookupModule(LookupBase):
                 display.vv(f"Resolved {raw_entry} → id={entry_id}")
 
             cache_key = self._cache_key(entry_id, field)
-            display.vv(f"try to read cache for key {cache_key}")
+            display.vv(f"try to read cache for key {cache_key}.")
             cached = self._read_cache(cache_key)
 
             if cached is not None:
@@ -159,8 +161,8 @@ class LookupModule(LookupBase):
                 display.vv(f"Cache HIT for '{entry_id}'")
             else:
                 display.vv(f"Cache MISS for '{entry_id}'")
-
                 value = self._fetch_rbw(entry_id, field)
+
                 # nur wenn das ergebniss ein String ist, in den cache legen.
                 if isinstance(value, str):
                     self._write_cache(cache_key, value)
@@ -186,7 +188,31 @@ class LookupModule(LookupBase):
 
         return results
 
+    def _sync_rbw(self):
+        """
+        """
+        cmd = ["rbw", "sync"]
+
+        try:
+            result = subprocess.run(
+                cmd,
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            return result.stdout.strip()
+        except subprocess.CalledProcessError as e:
+            err_msg = e.stderr.strip() or e.stdout.strip()
+            self._fail(
+                "Error sync vault entries.",
+                cmd=" ".join(cmd),
+                error=err_msg,
+            )
+
     def _fetch_rbw(self, entry_id, field):
+        """
+        """
         cmd = ["rbw", "get"]
         if field:
             cmd.extend(["--field", field])
@@ -204,7 +230,7 @@ class LookupModule(LookupBase):
         except subprocess.CalledProcessError as e:
             err_msg = e.stderr.strip() or e.stdout.strip()
             self._fail(
-                "Error retrieving vault entry",
+                "Error retrieving vault entry.",
                 entry_id=entry_id,
                 cmd=" ".join(cmd),
                 error=err_msg,
