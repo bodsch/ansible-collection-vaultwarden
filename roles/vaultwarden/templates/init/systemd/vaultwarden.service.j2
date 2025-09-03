@@ -10,6 +10,9 @@ Group                   = vaultwarden
 LimitNOFILE             = 1048576
 UMask                   = 0077
 
+ExecStart               =
+EnvironmentFile         =
+
 ExecStart               = /usr/bin/vaultwarden
 EnvironmentFile         = /etc/vaultwarden/config.env
 
@@ -44,7 +47,11 @@ SystemCallFilter        = ~@privileged @resources
 SystemCallArchitectures = native
 
 WorkingDirectory        = /var/lib/vaultwarden
-ReadWriteDirectories    = /var/lib/vaultwarden
+ReadWriteDirectories    = {{ vaultwarden_config.directories.data }}
+{% set dirs = vaultwarden_config.directories | default({}, true) | bodsch.vaultwarden.effective_path(vaultwarden_config.directories.data) %}
+{% for d in dirs %}
+ReadWriteDirectories    = {{ d }}
+{% endfor %}
 ReadWriteDirectories    = {{ vaultwarden_config.logging.log_file | dirname }}
 {% if vaultwarden_config.web_vault.enabled is defined and
       vaultwarden_config.web_vault.enabled | string | length > 0 and
@@ -53,4 +60,4 @@ ReadWriteDirectories    = {{ vaultwarden_config.directories.web_vault }}/web-vau
 {% endif %}
 
 [Install]
-WantedBy              = multi-user.target
+WantedBy                = multi-user.target

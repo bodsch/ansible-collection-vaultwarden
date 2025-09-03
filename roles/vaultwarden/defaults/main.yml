@@ -1,7 +1,7 @@
 ---
 
 vaultwarden_webvault:
-  version: 2025.6.0
+  version: latest
 
 vaultwarden_release: {}
 #   web:
@@ -16,6 +16,8 @@ vaultwarden_release: {}
 vaultwarden_service:
   state: started
   enabled: true
+
+vaultwarden_admin_token: ""
 
 vaultwarden_config:
   directories:

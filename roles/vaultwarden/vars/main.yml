@@ -53,6 +53,7 @@ vaultwarden_defaults_config:
     event_cleanup_schedule: ""                    # "0 10 0 * * *"
     events_days_retain: ""                        #
     auth_request_purge_schedule: ""               # "30 * * * * *"
+    duo_context_purge_schedule: ""                # "30 * * * * *"
   global:
     disable_icon_download: ""                     # false
     domain: ""

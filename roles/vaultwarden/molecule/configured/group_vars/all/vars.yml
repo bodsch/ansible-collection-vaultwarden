@@ -4,8 +4,14 @@ vaultwarden_webvault:
   version: latest
 
 vaultwarden_config:
-  #directories:
-  #  data: /var/lib/vaultwarden
+  directories:
+    data: /var/lib/vaultwarden
+    icon_cache: "data/icon_cache"                 # data/icon_cache
+    attachments: "data/attachments"               # data/attachments
+    sends: ""                                     # data/sends
+    tmp: ""                                       # data/tmp
+    templates: ""                                 # data/templates
+    web_vault: /usr/share/vaultwarden             # /usr/share/vaultwarden/web-vault/
   templates:
     reload_enabled: true
   web_vault:
@@ -13,9 +19,31 @@ vaultwarden_config:
   database: {}
   websocket: {}
   push: {}
-  job: {}
+  job:
+    ## The schedule format is a bit different from crontab as crontab does not contains seconds.
+    ## You can test the the format here: https://crontab.guru, but remove the first digit!
+    ## SEC  MIN   HOUR   DAY OF MONTH    MONTH   DAY OF WEEK
+    ## "0   30   9,12,15     1,15       May-Aug  Mon,Wed,Fri"
+    ## "0   30     *          *            *          *     "
+    ## "0   30     1          *            *          *     "
+    job_poll_interval_ms: ""                      # 30000
+    send_purge_schedule: "0 5 * * * *"                       # "0 5 * * * *"
+    trash_purge_schedule: ""                      # "0 5 0 * * *"
+    incomplete_2fa_schedule: ""                   # "30 * * * * *"
+    emergency_notification_reminder_schedule: ""  # "0 3 * * * *"
+    emergency_request_timeout_schedule: ""        # "0 7 * * * *"
+    event_cleanup_schedule: ""                    # "0 10 0 * * *"
+    events_days_retain: ""                        #
+    auth_request_purge_schedule: ""               # "30 * * * * *"
   global:
     domain: "https://vault.molecule.lan"
+    invitation:
+      expiration_hours: 12                        # 120
+      org_name: ""                                # vaultwarden
+    invitations_allowed: true                     # true
+    show_password_hint: true                      # false
+    signups:
+      allowed: true
   logging:
     extended_logging: true
     log_timestamp_format: "%Y-%m-%d %H:%M:%S.%3f"
