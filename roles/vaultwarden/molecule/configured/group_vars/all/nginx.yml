@@ -19,9 +19,9 @@ nginx_logformat:
 nginx_http:
 
   includes:
-    - includes.d/useragent.rules
-    - includes.d/proxy_cache.rules
-    - sites-enabled/*.conf
+    - includes.d/*.rules
+    - conf.d/*.conf
+    - sites-enabled/*
 
   client:                                                 #
     max_body_size: "128M"

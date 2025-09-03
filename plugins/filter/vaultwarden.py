@@ -7,6 +7,8 @@ from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
 import re
+import os
+from pathlib import Path
 
 from ansible.utils.display import Display
 
@@ -23,6 +25,7 @@ class FilterModule(object):
             'validate_smtp_settings': self.validate_smtp_settings,
             # 'web_vault_directory': self.web_vault_directory,
             'valid_list_data': self.valid_list_data,
+            'effective_path': self.effective_path,
         }
 
     def supported_databases(self, data, distribution, os_family):
@@ -100,3 +103,52 @@ class FilterModule(object):
             result.sort()
         # display.v(f"=result: {result}")
         return result
+
+    def effective_path(self, data, config):
+        """
+            Effektiver absoluter Zielpfad:
+            - relativ -> <data>/<attachments>
+            - absolut -> unverändert
+        """
+        # display.v(f"effective_path({data}, {config})")
+        def _expand(p: str) -> str:
+            return os.path.expandvars(os.path.expanduser(p))
+
+        if isinstance(data, dict) and isinstance(config, str):
+            result = []
+            data_base = config
+            _data = data.copy()
+
+            try:
+                _ = _data.pop('data')
+                _ = _data.pop('web_vault')
+            except AssertionError:
+                pass
+
+            dirs = [x for _, x in _data.items() if x.strip()]
+
+            for d in dirs:
+                p = Path(_expand(d))
+                if p.is_absolute():
+                    result.append(p)
+                else:
+                    result.append((data_base / p).resolve(strict=False))
+
+            return result
+
+        elif isinstance(data, str) and isinstance(config, dict):
+            _data = config.get('directories', {}).get('data', '')
+            data_base = Path(_expand(_data), "")
+            raw = (data or "").strip()
+
+            if not raw:
+                return None
+
+            p = Path(_expand(raw))
+            if p.is_absolute():
+                return p
+
+            # relativ => relativ zu data
+            return (data_base / p).resolve(strict=False)
+
+        return None
