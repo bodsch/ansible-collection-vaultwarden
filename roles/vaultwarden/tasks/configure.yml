@@ -26,6 +26,8 @@
   ansible.builtin.setup:
 
 - name: merge vaultwarden configuration between defaults and custom
+  when:
+    - not running_in_check_mode
   ansible.builtin.set_fact:
     vaultwarden_config: "{{ vaultwarden_defaults_config | combine(vaultwarden_config, recursive=True) }}"
 
@@ -37,6 +39,8 @@
     quiet: true
 
 - name: create logging directory
+  when:
+    - not running_in_check_mode
   ansible.builtin.file:
     state: directory
     path: "{{ vaultwarden_config.logging.log_file | dirname }}"
@@ -45,6 +49,8 @@
     mode: 0775
 
 - name: create configuration directory
+  when:
+    - not running_in_check_mode
   ansible.builtin.file:
     state: directory
     path: "{{ item }}"
@@ -64,6 +70,8 @@
     quiet: true
 
 - name: create vaultwarden config
+  when:
+    - not running_in_check_mode
   ansible.builtin.template:
     src: etc/vaultwarden/config.env.j2
     dest: /etc/vaultwarden/config.env

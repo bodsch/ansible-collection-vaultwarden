@@ -1,11 +1,16 @@
 ---
 
+- name: d
+  debug:
+    msg: "{{ vaultwarden_webvault }}"
+
 - name: get latest release
+  when:
+    - not running_in_check_mode
+    - vaultwarden_webvault.version == "latest"
   delegate_to: localhost
   become: false
   run_once: true
-  when:
-    - vaultwarden_webvault.version == "latest"
   block:
     - name: get latest release
       delegate_to: localhost
@@ -30,6 +35,8 @@
 # ----------------------------------------------------------------------------------------
 
 - name: detect installed vaultwarden web
+  when:
+    - not running_in_check_mode
   block:
     - name: detect if vaultwarden web exists
       ansible.builtin.stat:
@@ -54,14 +61,16 @@
         vaultwarden_web_version: "{{ _vaultwarden_web_version.get('content', '') | b64decode }}"
 
 - name: remove older web-vault directory
+  when:
+    - not running_in_check_mode
+    - not vaultwarden_web_version_directory.stat.islnk | default('false')
   ansible.builtin.file:
     path: "{{ vaultwarden_config.directories.web_vault }}/web-vault"
     state: absent
-  when:
-    - not vaultwarden_web_version_directory.stat.islnk | default('false')
 
 - name: vaultwarden web
   when:
+    - not running_in_check_mode
     - vaultwarden_config.web_vault.enabled | default('false') | bool
     - vaultwarden_config.directories.web_vault is defined
     - vaultwarden_config.directories.web_vault | string | length > 0

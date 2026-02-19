@@ -1,12 +1,16 @@
 ---
 
 - name: create install directory
+  when:
+    - not running_in_check_mode
   ansible.builtin.file:
     path: "{{ rbw_install_path }}"
     state: directory
     mode: 0755
 
 - name: detect extracted binary file for rbw on '{{ rbw_delegate_to }}'
+  when:
+    - not running_in_check_mode
   become: false
   delegate_to: "{{ rbw_delegate_to }}"
   run_once: "{{ 'false' if rbw_direct_download else 'true' }}"
@@ -15,18 +19,22 @@
   register: stat_file_binary
 
 - name: fail when extracted binary are missing
-  ansible.builtin.fail:
-    msg: "missing extracted binary on ansible controller"
   when:
     - not running_in_check_mode
     - not stat_file_binary.stat.exists
+  ansible.builtin.fail:
+    msg: "missing extracted binary on ansible controller"
 
 - name: detect installed rbw binary
+  when:
+    - not running_in_check_mode
   ansible.builtin.stat:
     path: "{{ rbw_install_path }}/{{ rbw_release.binary }}"
   register: stat_rbw_binary
 
 - name: detect activated rbw binary
+  when:
+    - not running_in_check_mode
   ansible.builtin.stat:
     path: /usr/bin/{{ rbw_release.binary }}
   register: stat_rbw_activated

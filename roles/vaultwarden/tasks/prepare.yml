@@ -22,6 +22,14 @@
         - default.yml
       skip: true
 
+- name: detect ansible check_mode
+  bodsch.core.check_mode:
+  register: _check_mode
+
+- name: define running_in_check_mode
+  ansible.builtin.set_fact:
+    running_in_check_mode: '{{ _check_mode.check_mode }}'
+
 - name: detect docker environment
   ansible.builtin.set_fact:
     is_docker_guest: "{{
@@ -29,10 +37,11 @@
       ansible_virtualization_type | default('none') == 'docker' }}"
 
 - name: install dependencies
+  when:
+    - not running_in_check_mode
+    - vaultwarden_dependencies | default([]) | count > 0
   ansible.builtin.package:
     name: "{{ vaultwarden_dependencies }}"
     state: present
-  when:
-    - vaultwarden_dependencies | default([]) | count > 0
 
 ...

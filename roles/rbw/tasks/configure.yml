@@ -5,12 +5,16 @@
     rbw_config: "{{ rbw_defaults_config | combine(rbw_config, recursive=True) }}"
 
 - name: create cli configuration directory
+  when:
+    - not running_in_check_mode
   ansible.builtin.file:
     state: directory
     path: "${HOME}/.config/rbw"
     mode: 0750
 
 - name: create cli configuration
+  when:
+    - not running_in_check_mode
   ansible.builtin.template:
     src: etc/rbw/config.json.j2
     dest: "${HOME}/.config/rbw/config.json"

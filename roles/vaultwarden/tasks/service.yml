@@ -1,6 +1,8 @@
 ---
 
 - name: start and enable service
+  when:
+    - not running_in_check_mode
   ansible.builtin.service:
     name: vaultwarden
     state: "{{ vaultwarden_service.state | default('started') }}"
