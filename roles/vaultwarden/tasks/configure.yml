@@ -1,5 +1,16 @@
 ---
 
+- name: resolve account data from fallback user
+  bodsch.core.account_defaults:
+    user: vaultwarden
+    # fail_on_missing_user: false
+  register: account_result
+
+- name: Apply resolved values
+  ansible.builtin.set_fact:
+    vaultwarden_owner: "{{ account_result.user }}"
+    vaultwarden_group: "{{ account_result.group }}"
+
 # - name: user and group handling
 #   when:
 #     - vaultwarden_virtual_user.name != "root"
@@ -34,7 +45,7 @@
 - name: assert broken database configuration
   ansible.builtin.assert:
     that:
-      - vaultwarden_config.database.url | bodsch.vaultwarden.supported_databases(ansible_distribution, ansible_os_family)
+      - vaultwarden_config.database.url | bodsch.vaultwarden.supported_databases(ansible_facts.distribution, ansible_facts.os_family)
     msg: "This version of vaultwarden currently only supports one sqlite database!\nPlease change your configuration."
     quiet: true
 
@@ -46,7 +57,7 @@
     path: "{{ vaultwarden_config.logging.log_file | dirname }}"
     owner: vaultwarden
     group: vaultwarden
-    mode: 0775
+    mode: "0775"
 
 - name: create configuration directory
   when:
@@ -54,7 +65,7 @@
   ansible.builtin.file:
     state: directory
     path: "{{ item }}"
-    mode: 0755
+    mode: "0755"
   loop:
     - /etc/vaultwarden
 
@@ -76,7 +87,7 @@
     src: etc/vaultwarden/config.env.j2
     dest: /etc/vaultwarden/config.env
     backup: true
-    mode: 0644
+    mode: "0644"
   notify:
     - restart service
 

@@ -83,14 +83,14 @@
         path: "{{ vaultwarden_config.directories.web_vault }}/{{ vaultwarden_webvault.version }}"
         owner: vaultwarden
         group: vaultwarden
-        mode: 0775
+        mode: "0775"
 
     - name: download vaultwarden web
       become: true
       ansible.builtin.get_url:
         url: "{{ vaultwarden_release.web.download_url }}/download/v{{ vaultwarden_webvault.version }}/{{ vaultwarden_release.web.file }}"
         dest: /tmp/
-        mode: 0644
+        mode: "0644"
         validate_certs: false
       register: _download
       until: _download is succeeded

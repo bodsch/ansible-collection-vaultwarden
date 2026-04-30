@@ -10,7 +10,7 @@
   ansible.builtin.file:
     state: directory
     path: "${HOME}/.config/rbw"
-    mode: 0750
+    mode: "0750"
 
 - name: create cli configuration
   when:
@@ -19,6 +19,6 @@
     src: etc/rbw/config.json.j2
     dest: "${HOME}/.config/rbw/config.json"
     backup: true
-    mode: 0644
+    mode: "0644"
 
 ...

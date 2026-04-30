@@ -6,7 +6,7 @@
   ansible.builtin.file:
     path: "{{ rbw_install_path }}"
     state: directory
-    mode: 0755
+    mode: "0755"
 
 - name: detect extracted binary file for rbw on '{{ rbw_delegate_to }}'
   when:
@@ -52,7 +52,7 @@
           ansible.builtin.copy:
             src: "{{ rbw_local_tmp_directory }}/{{ item }}"
             dest: "{{ rbw_install_path }}/{{ item }}"
-            mode: 0755
+            mode: "0755"
             remote_src: "{{ 'true' if rbw_direct_download else 'false' }}"
           loop:
             - rbw
@@ -61,7 +61,7 @@
         - name: make files executable
           ansible.builtin.file:
             path: "{{ rbw_install_path }}/{{ rbw_release.binary }}"
-            mode: 0755
+            mode: "0755"
 
         - name: create link to binary
           ansible.builtin.file:

@@ -34,7 +34,7 @@
     - not running_in_check_mode
     - rbw_direct_download
   ansible.builtin.set_fact:
-    rbw_delegate_to: "{{ ansible_host }}"
+    rbw_delegate_to: "{{ ansible_facts.host }}"
     rbw_local_tmp_directory: "{{
         lookup('env', 'CUSTOM_LOCAL_TMP_DIRECTORY') |
         default('/var/cache/ansible/rbw', true) }}/{{ rbw_version }}"
@@ -79,7 +79,7 @@
     #         checksum_file: sha256sums.txt
     #         user: "{{ lookup('env', 'GH_USER') | default(omit) }}"
     #         password: "{{ lookup('env', 'GH_TOKEN') | default(omit) }}"
-    #         architecture: "{{ ansible_architecture }}"
+    #         architecture: "{{ ansible_facts.architecture }}"
     #         system: "{{ ansible_facts.system }}"
     #         version: "v{{ rbw_version }}"
     #       register: _latest_checksum
@@ -100,7 +100,7 @@
         url: "{{ rbw_release.download_url }}/download/{{ rbw_version }}/{{ rbw_release.file }}"
         dest: "{{ rbw_local_tmp_directory }}/{{ rbw_release.file }}"
         # checksum: "{{ __rbw_checksum | default(omit) }}"
-        mode: 0640
+        mode: "0640"
       register: _download_archive
       until: _download_archive is succeeded
       retries: 5

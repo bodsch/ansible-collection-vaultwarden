@@ -19,50 +19,48 @@
   ansible.builtin.set_fact:
     vaultwarden_config: "{{ vaultwarden_defaults_config | combine(vaultwarden_config, recursive=True) }}"
 
-# debian based
-#
 - name: debian based
+  become: true
   when:
     - not running_in_check_mode
-    - ansible_os_family | lower == 'debian'
+    - ansible_facts.os_family | lower == 'debian'
+    # - php_version | int == 8
   block:
-    - name: download vaultwarden GPG
-      become: true
-      ansible.builtin.get_url:
-        url: https://bitwarden-deb.tech-network.de/bananian-keyring.gpg
-        dest: /etc/apt/trusted.gpg.d/bananian-keyring.gpg
-        mode: 0644
-      register: _download_gpg
-      until: _download_gpg is succeeded
-      retries: 5
-      delay: 2
-      check_mode: false
+    - name: define keyring name
+      ansible.builtin.set_fact:
+        _vaultwarden_keyring: "{{ 'vaultwarden-keyring.gpg' if ansible_facts.distribution_major_version | int == 13 else 'bananian-keyring.gpg' }}"
 
-    - name: add vaultwarden repo source
-      ansible.builtin.template:
-        src: etc/apt/vaultwarden.list.j2
-        dest: /etc/apt/sources.list.d/vaultwarden.list
-        mode: 0644
-      register: vaultwarden_repo_source
 
-    - name: update package cache  # noqa no-handler
-      become: true
-      ansible.builtin.package:
-        update_cache: true
+    - name: debian
       when:
-        - vaultwarden_repo_source.changed
+        ansible_facts.distribution | lower == "debian"
+      bodsch.core.apt_sources:
+        name: vaultwarden
+        filename: vaultwarden.sources
+        uris:
+          - http://bitwarden-deb.tech-network.de
+        suites: "{{ ansible_facts.distribution_release | lower }}"
+        components:
+          - main
+        signed_by: "/usr/share/keyrings/{{ _vaultwarden_keyring }}"
+        key:
+          method: download
+          url: "https://bitwarden-deb.tech-network.de/{{ _vaultwarden_keyring }}"
+          dest: "/usr/share/keyrings/{{ _vaultwarden_keyring }}"
+          # validate: false
+        update_cache: true
 
 - name: create policy-rc.d
   when:
     - not running_in_check_mode
     - not vaultwarden_installed
-    - ansible_os_family | lower == 'debian'
+    - ansible_facts.os_family | lower == 'debian'
   ansible.builtin.copy:
     dest: /usr/sbin/policy-rc.d
     content: |
       #!/bin/sh
       exit 101
-    mode: 0755
+    mode: "0755"
   tags:
     - vaultwarden
     - vaultwarden_install
@@ -78,10 +76,25 @@
     - vaultwarden
     - vaultwarden_install
 
+- name: create vaultwarden custom directory tree
+  when:
+    - not running_in_check_mode
+  bodsch.core.directories:
+    owner: vaultwarden
+    group: vaultwarden
+    mode: "0775"
+    base_path: "{{ vaultwarden_config.directories.data }}"
+    paths:
+      - path: icon_cache
+      - path: attachments
+      - path: sends
+      - path: tmp
+      - path: templates
+
 - name: systemd
   when:
     - not running_in_check_mode
-    - ansible_service_mgr | lower == "systemd"
+    - ansible_facts.service_mgr | lower == "systemd"
   block:
     - name: create systemd overwrite directory
       ansible.builtin.file:
@@ -104,7 +117,7 @@
   when:
     - not running_in_check_mode
     - not vaultwarden_installed
-    - ansible_os_family | lower == 'debian'
+    - ansible_facts.os_family | lower == 'debian'
   ansible.builtin.file:
     path: /usr/sbin/policy-rc.d
     state: absent
