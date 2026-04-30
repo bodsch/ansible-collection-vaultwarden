@@ -34,12 +34,19 @@ homepage: https://github.com/bodsch/ansible-collection-vaultwarden
 issues: https://github.com/bodsch/ansible-collection-vaultwarden/issues
 
 build_ignore:
-  - "galaxy.yml"
   - "*.pyc"
   - "*.retry"
+  - "*/molecule"
   - ".ansible-lint"
+  - ".config"
   - ".editorconfig"
   - ".flake8"
+  - ".git"
+  - ".github"
   - ".gitignore"
   - ".yamllint"
-  - ".github"
+  - "Makefile"
+  - "galaxy.yml"
+  - "hooks"
+  - "test-requirements.txt"
+  - "tox.ini"
