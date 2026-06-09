@@ -1,0 +1,74 @@
+---
+name: effective_path
+version_added: "1.0.0"
+short_description: Compute effective absolute paths for vaultwarden directories
+description:
+  - Resolves effective absolute paths for vaultwarden data directories.
+  - Supports two modes of operation depending on argument types:
+    1. Dictionary to string conversion - converts all directory paths in a dict to absolute paths
+    2. String to dict lookup - resolves a single directory path using base path from config dict
+  - Handles both absolute and relative paths.
+  - Relative paths are resolved relative to a configurable base directory.
+  - Supports environment variable and user home directory expansion using C($var) and C(~) syntax.
+author: "Bodo Schulz (@bodsch)"
+options:
+  _input:
+    description:
+      - Either a dictionary of directory paths or a single directory path string
+    type: any
+    required: true
+  config:
+    description:
+      - Either a base directory path string or a configuration dictionary containing directory settings
+    type: any
+    required: true
+EXAMPLES: |
+  - name: Resolve multiple directory paths with base directory
+    ansible.builtin.debug:
+      msg: "{{ directories | vaultwarden.rbw.effective_path(base_path) }}"
+    vars:
+      directories:
+        attachments: "/var/lib/vaultwarden/attachments"
+        icons: "icons"
+        send: "send"
+      base_path: "/var/lib/vaultwarden"
+
+  - name: Resolve single directory path using config dict
+    ansible.builtin.debug:
+      msg: "{{ 'attachments' | vaultwarden.rbw.effective_path(config) }}"
+    vars:
+      config:
+        directories:
+          data: "/var/lib/vaultwarden"
+        other_setting: "value"
+
+  - name: Resolve paths with environment variables and home directory
+    ansible.builtin.debug:
+      msg: "{{ relative_path | vaultwarden.rbw.effective_path(config_dict) }}"
+    vars:
+      relative_path: "$HOME/vaultwarden/attachments"
+      config_dict:
+        directories:
+          data: "/var/lib/vaultwarden"
+
+  - name: Store resolved paths in fact for later use
+    ansible.builtin.set_fact:
+      vw_paths: "{{ vw_dirs | vaultwarden.rbw.effective_path(base_dir) }}"
+    vars:
+      vw_dirs:
+        attachments: "attachments"
+        icons: "web/icons"
+      base_dir: "/var/lib/vaultwarden"
+
+RETURN:
+  _value:
+    description:
+      - When input is dict and config is string (list mode):
+        List of resolved Path objects with absolute paths. Relative paths resolved relative to config base.
+      - When input is string and config is dict (lookup mode):
+        Single Path object representing the absolute path. Relative paths resolved relative to config.directories.data.
+      - Returns None if input string is empty or inputs have incompatible types.
+    type: any
+    sample:
+      - PosixPath('/var/lib/vaultwarden/attachments')
+      - PosixPath('/var/lib/vaultwarden/icons')

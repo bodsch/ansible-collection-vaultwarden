@@ -1,0 +1,77 @@
+---
+name: valid_list_data
+version_added: "1.0.0"
+short_description: Filter list entries against valid allowed entries
+description:
+  - Filters a list to include only entries that are present in a list of valid entries.
+  - Returns the intersection of the input list and valid entries list.
+  - Both lists are sorted alphabetically before comparison.
+  - Removes duplicates and returns results in sorted order.
+author: "Bodo Schulz (@bodsch)"
+options:
+  _input:
+    description:
+      - The list of entries to be filtered
+    type: list
+    elements: str
+    required: true
+  valid_entries:
+    description:
+      - The list of valid/allowed entries
+    type: list
+    elements: str
+    required: true
+EXAMPLES: |
+  - name: Filter installed services list against valid services
+    ansible.builtin.debug:
+      msg: "{{ installed_services | vaultwarden.rbw.valid_list_data(valid_services) }}"
+    vars:
+      installed_services:
+        - nginx
+        - postgresql
+        - redis
+        - apache2
+      valid_services:
+        - nginx
+        - redis
+        - apache2
+
+  - name: Filter configuration options against supported options
+    ansible.builtin.set_fact:
+      supported_features: "{{ requested_features | vaultwarden.rbw.valid_list_data(available_features) }}"
+    vars:
+      requested_features:
+        - feature_a
+        - feature_x
+        - feature_b
+        - feature_invalid
+      available_features:
+        - feature_a
+        - feature_b
+        - feature_c
+
+  - name: Use filtered results in conditional
+    ansible.builtin.debug:
+      msg: "Supported features: {{ my_list | vaultwarden.rbw.valid_list_data(allowed) }}"
+    vars:
+      my_list:
+        - zebra
+        - apple
+        - cherry
+        - invalid
+      allowed:
+        - apple
+        - banana
+        - cherry
+
+RETURN:
+  _value:
+    description:
+      - Sorted list containing only entries that are both in input list and valid entries list.
+      - Returns empty list if there are no common entries.
+    type: list
+    elements: str
+    sample:
+      - apple
+      - cherry
+      - zebra
