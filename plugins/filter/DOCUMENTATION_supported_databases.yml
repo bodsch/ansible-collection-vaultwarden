@@ -1,0 +1,54 @@
+---
+name: supported_databases
+version_added: "1.0.0"
+short_description: Validate if a database backend is supported for a distribution
+description:
+  - Validates whether the specified database backend is supported for the given
+    Linux distribution and OS family.
+  - Some distributions, particularly Debian-based systems, may only support
+    specific database backends (e.g., SQLite) while others support multiple
+    backends like MySQL or PostgreSQL.
+author: "Bodo Schulz (@bodsch)"
+options:
+  _input:
+    description:
+      - The database type to validate (e.g., C(sqlite), C(mysql), C(postgresql))
+    type: str
+    required: true
+  distribution:
+    description:
+      - The name of the Linux distribution being targeted
+    type: str
+    required: true
+    choices:
+      - Debian
+      - ArchLinux
+      - Fedora
+  os_family:
+    description:
+      - The OS family classification
+    type: str
+    required: true
+EXAMPLES: |
+  - name: Check if MySQL is supported on Debian
+    ansible.builtin.debug:
+      msg: "{{ 'mysql' | vaultwarden.rbw.supported_databases('Debian', 'Debian') }}"
+
+  - name: Check if PostgreSQL is supported on ArchLinux
+    ansible.builtin.debug:
+      msg: "{{ 'postgresql' | vaultwarden.rbw.supported_databases('ArchLinux', 'Archlinux') }}"
+
+  - name: Check SQLite support on Debian
+    ansible.builtin.debug:
+      msg: "{{ 'sqlite' | vaultwarden.rbw.supported_databases('Debian', 'Debian') }}"
+
+RETURN:
+  _value:
+    description:
+      - Boolean indicating whether the database is supported for the distribution.
+      - Returns C(False) for MySQL/PostgreSQL on Debian (only SQLite is supported).
+      - Returns C(True) for all other combinations.
+    type: bool
+    sample:
+      - true
+      - false

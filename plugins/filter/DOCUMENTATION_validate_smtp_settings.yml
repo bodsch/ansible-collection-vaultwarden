@@ -1,0 +1,74 @@
+---
+name: validate_smtp_settings
+version_added: "1.0.0"
+short_description: Validate SMTP configuration settings
+description:
+  - Validates that SMTP email settings are properly configured for vaultwarden.
+  - Supports two methods of sending emails:
+    1. Standard SMTP (requires both C(host) and C(from) fields)
+    2. Local sendmail command (requires both C(use_sendmail) and C(sendmail_command))
+  - Returns validation status with detailed error messages if configuration is invalid.
+author: "Bodo Schulz (@bodsch)"
+options:
+  _input:
+    description:
+      - Dictionary containing SMTP configuration parameters
+    type: dict
+    required: true
+    suboptions:
+      host:
+        description: SMTP server hostname
+        type: str
+      from:
+        description: Sender email address (must be valid email format)
+        type: str
+      use_sendmail:
+        description: Use local sendmail instead of SMTP
+        type: bool
+      sendmail_command:
+        description: Command to execute for sendmail delivery
+        type: str
+EXAMPLES: |
+  - name: Validate complete SMTP settings
+    ansible.builtin.debug:
+      msg: "{{ smtp_config | vaultwarden.rbw.validate_smtp_settings }}"
+    vars:
+      smtp_config:
+        host: "mail.example.com"
+        from: "vaultwarden@example.com"
+
+  - name: Validate sendmail configuration
+    ansible.builtin.debug:
+      msg: "{{ sendmail_config | vaultwarden.rbw.validate_smtp_settings }}"
+    vars:
+      sendmail_config:
+        use_sendmail: true
+        sendmail_command: "/usr/sbin/sendmail -t"
+
+  - name: Validate empty SMTP settings (no email support)
+    ansible.builtin.debug:
+      msg: "{{ {} | vaultwarden.rbw.validate_smtp_settings }}"
+
+  - name: Check validation result and act on errors
+    ansible.builtin.assert:
+      that:
+        - smtp_validation.valid
+      fail_msg: "{{ smtp_validation.msg }}"
+    vars:
+      smtp_validation: "{{ smtp_config | vaultwarden.rbw.validate_smtp_settings }}"
+
+RETURN:
+  _value:
+    description:
+      - Dictionary containing validation results
+    type: dict
+    contains:
+      valid:
+        description: Whether the SMTP settings are valid
+        type: bool
+      msg:
+        description: Validation message (empty string if valid)
+        type: str
+    sample:
+      valid: true
+      msg: "SMTP Settings are valid."
